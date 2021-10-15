@@ -1,0 +1,9 @@
+landmark_slam_2d_node:
+  ros__parameters:
+    landmark_detections_topic_name: "/perception/landmark_detections"
+    slam_map_topic_name: "/estimation/slam/map"
+    node_rate: 10
+    slam_map_rviz_topic_name: "/estimation/visualization/map"
+    state_estimation_topic_name: "/estimation/slam/state"
+    slam_pose_topic_name: "/estimation/slam/pose"
+    n_particles: 100
