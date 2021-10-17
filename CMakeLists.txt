@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(l_slam)
+project(landmark_slam_2d)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -15,11 +15,34 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+include_directories(include)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(eigen3 REQUIRED)
+find_package(nav_2d_msgs)
+find_package(visualization_msgs)
+
+# add the executables
+add_executable (landmark_slam_2d_node
+                src/main.cpp
+                src/slam.cpp
+                src/slam_handle.cpp
+                )
+ament_target_dependencies(landmark_slam_2d_node rclcpp std_msgs geometry_msgs nav_2d_msgs visualization_msgs eigen3)
+
+install (TARGETS
+  landmark_slam_2d_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
