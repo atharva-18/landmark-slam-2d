@@ -192,13 +192,12 @@ Slam::Slam() {
 }
 
 // Getters
-std::vector<geometry_msgs::msg::Point32> Slam::getMap() const { return cone_map_; }
+std::vector<geometry_msgs::msg::Point32> Slam::getMap() const { return landmarks_map_; }
 geometry_msgs::msg::Pose2D Slam::getState() const { return slam_state_; }
 
-void Slam::setParameters(int n_particles, double mh_threshold) {
+void Slam::setParameters(int n_particles) {
   n_particles_ = n_particles;
   n_resample_ = n_particles_ / 1.5;
-  mh_threshold_ = mh_threshold;
 
   for(int i = 0; i < n_particles_;i++) {
     particles_.push_back(Particle(n_particles_));
@@ -287,13 +286,13 @@ void Slam::resample() {
   
 }
 
-void Slam::updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &cones, bool frozen_update) {
+void Slam::updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &landmarks, bool frozen_update) {
   std::vector<std::vector<int>> particle_lm;
   for (int i = 0; i < n_particles_; i++) {
     std::vector<int> init = {};
     particle_lm.push_back(init);
   }
-  for(long unsigned int i = 0; i < cones.size(); i++) {
+  for(long unsigned int i = 0; i < landmarks.size(); i++) {
     int particle_id = 0;
     for(auto &particle:particles_) {
       int observed_idx;
@@ -303,8 +302,8 @@ void Slam::updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &cones
       const double c = std::cos(particle.yaw);
 
       // Transform from robot to world frame
-      z << (cones[i].x * c - cones[i].y * s) + particle.x, // Calculate Landmark coordinates 
-          (cones[i].x * s + cones[i].y * c) + particle.y;
+      z << (landmarks[i].x * c - landmarks[i].y * s) + particle.x, // Calculate Landmark coordinates 
+          (landmarks[i].x * s + landmarks[i].y * c) + particle.y;
 
       Eigen::Matrix2d Q;
       Q << 0.001, 0,
@@ -321,26 +320,26 @@ void Slam::updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &cones
       const auto p_i = std::distance(particle.landmarks.begin(), p_it);
 
       if(p_i == static_cast<long int>(particle.landmarks.size())) {
-        // Add new cone to empty map
-        z(0) = std::hypot(cones[i].x, cones[i].y);
-        z(1) = pi_2_pi(std::atan2(cones[i].y, cones[i].x));
+        // Add new landmark to empty map
+        z(0) = std::hypot(landmarks[i].x, landmarks[i].y);
+        z(1) = pi_2_pi(std::atan2(landmarks[i].y, landmarks[i].x));
 
         Landmark new_landmark(z, Q, &particle);
         particle.landmarks.push_back(new_landmark);
         observed_idx = p_i - 1;
       }else if(std::hypot(particle.landmarks[p_i].x[0] - z(0), particle.landmarks[p_i].x[1] - z(1)) > 0.5 && !frozen_update) {
         // Probablity is too low
-        z(0) = std::hypot(cones[i].x, cones[i].y);
-        z(1) = pi_2_pi(std::atan2(cones[i].y, cones[i].x));
+        z(0) = std::hypot(landmarks[i].x, landmarks[i].y);
+        z(1) = pi_2_pi(std::atan2(landmarks[i].y, landmarks[i].x));
 
-        // Add new cone to map
+        // Add new landmark to map
         Landmark new_landmark(z, Q, &particle);
         particle.landmarks.push_back(new_landmark);
         observed_idx = particle.landmarks.size() - 1;
       }else {
-        // Update cone position
-        z(0) = std::hypot(cones[i].x, cones[i].y);
-        z(1) = pi_2_pi(std::atan2(cones[i].y, cones[i].x));
+        // Update landmark position
+        z(0) = std::hypot(landmarks[i].x, landmarks[i].y);
+        z(1) = pi_2_pi(std::atan2(landmarks[i].y, landmarks[i].x));
 
         particle.w *= particle.computeWeight(p_i, z, Q);
         particle.landmarks[p_i].update(z, Q, &particle);
@@ -382,7 +381,7 @@ void Slam::calcFinalState() {
 }
 
 void Slam::createMap() {
-  cone_map_.clear();
+  landmarks_map_.clear();
 
   double max_w = std::numeric_limits<double>::min();
   int id_cnt = 0;
@@ -396,16 +395,16 @@ void Slam::createMap() {
   }
   
   for(size_t i = 0;i < particles_[best_id_].landmarks.size(); i++) {
-    geometry_msgs::msg::Point32 cone_;
-    cone_.x = particles_[best_id_].landmarks[i].x[0];
-    cone_.y = particles_[best_id_].landmarks[i].x[1];
+    geometry_msgs::msg::Point32 landmark_;
+    landmark_.x = particles_[best_id_].landmarks[i].x[0];
+    landmark_.y = particles_[best_id_].landmarks[i].x[1];
 
-    cone_map_.push_back(cone_);
+    landmarks_map_.push_back(landmark_);
   }
 
-  // ROS_WARN_STREAM("Map size is " <<  (int) (cone_map_.cone_blue.size()
-                                    // + cone_map_.cone_yellow.size() 
-                                    // + cone_map_.cone_orange.size()));
+  // ROS_WARN_STREAM("Map size is " <<  (int) (landmark_map_.landmark_blue.size()
+                                    // + landmark_map_.landmark_yellow.size() 
+                                    // + landmark_map_.landmark_orange.size()));
 }
 
 void Slam::calculateState(const geometry_msgs::msg::Twist &velocity) {

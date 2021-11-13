@@ -59,28 +59,27 @@ class SlamHandle : public rclcpp::Node
   void sendVisualization();
 
  private:  
-  rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr coneDetectionsSubscriber_;
+  rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr landmarkDetectionsSubscriber_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr stateEstimateSubscriber_;
 
   rclcpp::Publisher<geometry_msgs::msg::Polygon>::SharedPtr slamMapPublisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slamMapRvizPublisher_;
   rclcpp::Publisher<geometry_msgs::msg::Pose2D>::SharedPtr slamStatePublisher_;
 
-  void coneDetectionsCallback(const geometry_msgs::msg::Polygon::SharedPtr cones);
+  void landmarkDetectionsCallback(const geometry_msgs::msg::Polygon::SharedPtr landmarks);
   void stateEstimateCallback(const geometry_msgs::msg::Twist::SharedPtr state_estimate);
 
   std::string state_estimation_topic_name_;
-  std::string cone_detections_topic_name_;
+  std::string landmark_detections_topic_name_;
   std::string slam_map_topic_name_;
   std::string slam_map_rviz_topic_name_;
-  std::string particles_rviz_topic_name_;
-  std::string obs_rviz_topic_name_;
+  std::string slam_pose_topic_name_;
   int node_rate_;
 
   Slam slam_;
-  std::vector<geometry_msgs::msg::Point32> cones_;
-  std::vector<geometry_msgs::msg::Point32> received_cones_;
-  std::vector<geometry_msgs::msg::Point32> corrected_cones_;
+  std::vector<geometry_msgs::msg::Point32> landmarks_;
+  std::vector<geometry_msgs::msg::Point32> received_landmarks_;
+  std::vector<geometry_msgs::msg::Point32> corrected_landmarks_;
   geometry_msgs::msg::Twist state_estimate_;
   geometry_msgs::msg::Polygon slam_map_;
   geometry_msgs::msg::Pose2D slam_state_;
@@ -88,7 +87,6 @@ class SlamHandle : public rclcpp::Node
   double current_time_stamp_;
 
   int n_particles_;
-  double mh_threshold_;
 
   Eigen::Vector3d z;
   Eigen::Matrix3d R;

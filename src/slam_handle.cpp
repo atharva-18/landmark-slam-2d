@@ -24,7 +24,7 @@ namespace ns_slam {
 SlamHandle::SlamHandle() : Node("landmark_slam_2d")
 {
   loadParameters();
-  slam_.setParameters(n_particles_, mh_threshold_);
+  slam_.setParameters(n_particles_);
   subscribeToTopics();
   publishToTopics();
 }
@@ -34,7 +34,7 @@ int SlamHandle::getNodeRate() const { return node_rate_; }
 
 // Methods
 void SlamHandle::loadParameters() {
-  this->declare_parameter("cone_detections_topic_name");
+  this->declare_parameter("landmark_detections_topic_name");
   this->declare_parameter("slam_map_topic_name");
   this->declare_parameter("node_rate");
   this->declare_parameter("slam_map_rviz_topic_name");
@@ -44,32 +44,30 @@ void SlamHandle::loadParameters() {
   this->declare_parameter("n_particles");
   this->declare_parameter("mh_threshold");
 
-  this->get_parameter_or("cone_detections_topic_name", cone_detections_topic_name_, std::string("/perception/cone_detections"));
+  this->get_parameter_or("landmark_detections_topic_name", landmark_detections_topic_name_, std::string("/perception/landmark_detections"));
   this->get_parameter_or("slam_map_topic_name", slam_map_topic_name_, std::string("/estimation/slam/map"));
   this->get_parameter_or("node_rate", node_rate_, 10);
   this->get_parameter_or("slam_map_rviz_topic_name", slam_map_rviz_topic_name_, std::string("/estimation/visualization/map"));
   this->get_parameter_or("state_estimation_topic_name", state_estimation_topic_name_, std::string("/estimation/slam/state"));
-  this->get_parameter_or("particle_topic_name", particles_rviz_topic_name_, std::string("/estimation/slam/particles"));
-  this->get_parameter_or("observations_topic_name", obs_rviz_topic_name_, std::string("/estimation/slam/observations"));
+  this->get_parameter_or("slam_pose_topic_name", slam_pose_topic_name_, std::string("/estimation/slam/pose"));
   this->get_parameter_or("n_particles", n_particles_, 100);
-  this->get_parameter_or("mmh_threshold", mh_threshold_, 1.0);
 
   // Velocity covariance
   R << 0.01, 0, 0,
        0, 0.01, 0,
-       0, 0, 0.0001;
+       0, 0, 0.01;
 }
 
 void SlamHandle::subscribeToTopics() {
   auto default_qos = rclcpp::QoS(rclcpp::SystemDefaultsQoS());
-  coneDetectionsSubscriber_ = this->create_subscription<geometry_msgs::msg::Polygon>(cone_detections_topic_name_, default_qos, std::bind(&SlamHandle::coneDetectionsCallback, this, std::placeholders::_1));
+  landmarkDetectionsSubscriber_ = this->create_subscription<geometry_msgs::msg::Polygon>(landmark_detections_topic_name_, default_qos, std::bind(&SlamHandle::landmarkDetectionsCallback, this, std::placeholders::_1));
   stateEstimateSubscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(state_estimation_topic_name_, default_qos, std::bind(&SlamHandle::stateEstimateCallback, this, std::placeholders::_1));
 }
 
 void SlamHandle::publishToTopics() {
   slamMapPublisher_ = this->create_publisher<geometry_msgs::msg::Polygon>(slam_map_topic_name_, 1);
   slamMapRvizPublisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(slam_map_rviz_topic_name_, 1);
-  slamStatePublisher_ = this->create_publisher<geometry_msgs::msg::Pose2D>(particles_rviz_topic_name_, 1);
+  slamStatePublisher_ = this->create_publisher<geometry_msgs::msg::Pose2D>(slam_pose_topic_name_, 1);
 }
 
 void SlamHandle::sendMap() {
@@ -79,10 +77,11 @@ void SlamHandle::sendMap() {
 
   slam_map_.points = std::move(slam_.getMap());
   slamMapPublisher_->publish(slam_map_);
+  slamStatePublisher_->publish(slam_state_);
 }
 
-void SlamHandle::coneDetectionsCallback(const geometry_msgs::msg::Polygon::SharedPtr cones) {
-  cones_ = std::move(cones->points);
+void SlamHandle::landmarkDetectionsCallback(const geometry_msgs::msg::Polygon::SharedPtr landmarks) {
+  landmarks_ = std::move(landmarks->points);
 
   z << vx_ / (steps_ * 1.0), vy_ / (steps_ * 1.0), theta_dt_ / (steps_ * 1.0);
 
@@ -91,7 +90,7 @@ void SlamHandle::coneDetectionsCallback(const geometry_msgs::msg::Polygon::Share
   previous_time_stamp_ = current_time_stamp_;
 
   slam_.predictParticles(z, R, dt);
-  slam_.updateLandmarks(cones_, false);
+  slam_.updateLandmarks(landmarks_, false);
   slam_.resample();
   slam_.calcFinalState();
   slam_.createMap();

@@ -89,7 +89,7 @@ class Slam {
   geometry_msgs::msg::Pose2D getState() const;
 
   /**
-   *  initializes the cone map
+   *  initializes the landmark map
    */
   void initializeMap();
 
@@ -99,17 +99,17 @@ class Slam {
   void initializeState();
 
   /**
-   *  updates the cone map
+   *  updates the landmark map
    */
-  void updateMap(const std::vector<geometry_msgs::msg::Point32> &cones);
+  void updateMap(const std::vector<geometry_msgs::msg::Point32> &landmarks);
 
   /**
    *  updates the landmark map
    */
-  void updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &cones, bool frozen_update);
+  void updateLandmarks(const std::vector<geometry_msgs::msg::Point32> &landmarks, bool frozen_update);
 
   /**
-   *  Creates cone map based on landmarks
+   *  Creates landmark map based on landmarks
    */
   void createMap();
 
@@ -126,7 +126,7 @@ class Slam {
   /*
    * sets fastSLAM parameters
    */
-  void setParameters(int n_particles, double mh_threshold);
+  void setParameters(int n_particles);
 
   /*
    * Predict particles using motion model
@@ -150,13 +150,12 @@ class Slam {
 
   std::vector<Landmark> landmark_map_;
   std::vector<Particle> particles_;
-  std::vector<geometry_msgs::msg::Point32> cone_map_;
+  std::vector<geometry_msgs::msg::Point32> landmarks_map_;
   geometry_msgs::msg::Pose2D slam_state_;
   int max_map_size_;
 
   int n_particles_;
   int n_resample_;
-  double mh_threshold_;
   int best_id_ = 0;
 };
 
